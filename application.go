@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// App is the main structure of a extcap application.
+// App is the main structure of an extcap application.
 type App struct {
 	// Application brief description
 	Usage string
@@ -17,44 +17,45 @@ type App struct {
 	// Application help description
 	HelpPage string
 
-	// AdditionalHelp will be displaied in version output.
+	// AdditionalHelp will be displayed in version output.
 	Version VersionInfo
 
-	// Usage examples to dispaly in USAGE section of help output.
-	// By default add following common examples:
-	// <application-name> --extcap-interfaces
-	// For example for ciscodump:
+	// Usage examples to display in USAGE section of help output.
+	// Every string will be prepended with <application-name>
+	// By default, the following usage example is always added:
+	//    --extcap-interfaces
+	//
+	// As an example, adding the following lines with application name 'ciscodump':
 	//    --extcap-interface=ciscodump --extcap-dlts
 	//    --extcap-interface=ciscodump --extcap-config
 	//    --extcap-interface=ciscodump --remote-host myhost --remote-port 22222 --remote-username myuser --remote-interface gigabit0/0 --fifo=FILENAME --capture
-	// Will produce ouput
+	// will produce the following output:
 	//    ciscodump --extcap-interfaces
 	//    ciscodump --extcap-interface=ciscodump --extcap-dlts
 	//    ciscodump --extcap-interface=ciscodump --extcap-config
 	//    ciscodump --extcap-interface=ciscodump --remote-host myhost --remote-port 22222 --remote-username myuser --remote-interface gigabit0/0 --fifo=FILENAME --capture
 	UsageExamples []string
 
-	// GetInterfaces returns list of intefaces. Should be implement
+	// GetInterfaces returns list of interfaces. Should be implemented.
 	GetInterfaces func() ([]CaptureInterface, error)
 
-	// GetDLT returns DLT for given interface. Should be implement.
+	// GetDLT returns DLT for given interface. Should be implemented.
 	GetDLT func(iface string) (DLT, error)
 
-	// GetConfigOptions returns configuration parameters for given interface. Optional
+	// GetConfigOptions returns configuration parameters for given interface. Optional.
 	GetConfigOptions func(iface string) ([]ConfigOption, error)
 
-	// GetAllConfigOptions retrun all possible configuration options. Optional (all interfaces have not configuration options).
+	// GetAllConfigOptions returns all possible configuration options. Optional (interfaces do not have any configuration options).
 	GetAllConfigOptions func() []ConfigOption
 
-	// StartCapture starts capture process. Should be implement. opts is configuration options for capture on given interface
-	// which depends on interface
+	// StartCapture starts capture process. Should be implemented. Opts are the configuration options for capture on given interface.
 	StartCapture func(iface string, fifo io.WriteCloser, filter string, opts map[string]interface{}) error
 
-	// OpenPipe opens fifo pipe to write capture results. If it not defined then default is used.
+	// OpenPipe opens fifo pipe to write capture results. If it is not defined then default is used.
 	OpenPipe func(string) (io.WriteCloser, error)
 }
 
-// Runs main loop application
+// Run executes the main application loop
 func (extapp App) Run(arguments []string) {
 	app := cli.NewApp()
 
@@ -63,7 +64,7 @@ func (extapp App) Run(arguments []string) {
 		extapp.Version.Info = "0.0.1"
 	}
 	if extapp.Version.Help == "" {
-		extapp.Version.Help = "https://github.com/kor44/extcap"
+		extapp.Version.Help = "https://github.com/lion7/extcap"
 	}
 
 	app.Usage = extapp.Usage
@@ -73,9 +74,9 @@ func (extapp App) Run(arguments []string) {
 	extapp.UsageExamples = append([]string{"--extcap-interfaces"}, extapp.UsageExamples...)
 	w := new(strings.Builder)
 	for i, str := range extapp.UsageExamples {
-		fmt.Fprintf(w, "%s %s", app.Name, str)
+		_, _ = fmt.Fprintf(w, "%s %s", app.Name, str)
 		if i != len(extapp.UsageExamples)-1 {
-			fmt.Fprintln(w)
+			_, _ = fmt.Fprintln(w)
 		}
 	}
 	app.UsageText = w.String()
@@ -83,9 +84,14 @@ func (extapp App) Run(arguments []string) {
 	app.CustomAppHelpTemplate = helpTemplate
 
 	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:  "extcap-version",
+			Usage: "specify the Wireshark major and minor version",
+		},
+
 		&cli.BoolFlag{
 			Name:  "extcap-interfaces",
-			Usage: "list the extcap Interfaces",
+			Usage: "list the extcap interfaces",
 		},
 
 		&cli.BoolFlag{
@@ -100,7 +106,7 @@ func (extapp App) Run(arguments []string) {
 
 		&cli.BoolFlag{
 			Name:  "extcap-config",
-			Usage: "llist the additional configuration for an interface",
+			Usage: "list the additional configuration for an interface",
 		},
 
 		&cli.BoolFlag{
@@ -110,7 +116,7 @@ func (extapp App) Run(arguments []string) {
 
 		&cli.StringFlag{
 			Name:  "extcap-capture-filter",
-			Usage: "the capture filter `<CFILTER>`",
+			Usage: "the capture filter `<filter>`",
 		},
 
 		&cli.StringFlag{
@@ -128,20 +134,27 @@ func (extapp App) Run(arguments []string) {
 			switch opt.(type) {
 			case *ConfigStringOpt:
 				app.Flags = append(app.Flags, &cli.StringFlag{
-					Name:  opt.call(),
-					Usage: opt.display(),
+					Name:     opt.call(),
+					Usage:    opt.display(),
+					Required: opt.isRequired(),
+					Value:    opt.(*ConfigStringOpt).defaultValue,
 				})
 			case *ConfigBoolOpt:
 				app.Flags = append(app.Flags, &cli.BoolFlag{
-					Name:  opt.call(),
-					Usage: opt.display(),
+					Name:     opt.call(),
+					Usage:    opt.display(),
+					Required: opt.isRequired(),
+					Value:    opt.(*ConfigBoolOpt).defaultValue,
 				})
 			case *ConfigIntegerOpt:
+				fmt.Println(opt.(*ConfigIntegerOpt).defaultSet)
 				app.Flags = append(app.Flags, &cli.IntFlag{
-					Name:  opt.call(),
-					Usage: opt.display(),
+					Name:     opt.call(),
+					Usage:    opt.display(),
+					Required: opt.isRequired(),
+					Value:    opt.(*ConfigIntegerOpt).defaultValue,
 				})
-			// case *SelectorConfig:
+				// case *SelectorConfig:
 			default:
 				errStr := fmt.Sprintf("Unknown config option type: %T", opt)
 				panic(errStr)
@@ -152,12 +165,12 @@ func (extapp App) Run(arguments []string) {
 	app.Action = extapp.mainAction
 
 	if err := app.Run(arguments); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
 	}
 }
 
-func (extapp *App) mainAction(ctx *cli.Context) error {
+func (extapp App) mainAction(ctx *cli.Context) error {
 
 	// Print all interfaces
 	if showIface := ctx.IsSet("extcap-interfaces"); showIface {
@@ -233,7 +246,7 @@ func (extapp *App) mainAction(ctx *cli.Context) error {
 			if name == "extcap-interface" || name == "fifo" || name == "extcap-capture-filter" {
 				continue
 			}
-			opts[name] = ctx.Generic(name)
+			opts[name] = ctx.Value(name)
 		}
 
 		openPipeFunc := extapp.OpenPipe
@@ -253,13 +266,18 @@ func (extapp *App) mainAction(ctx *cli.Context) error {
 		return nil
 	}
 
+	// Validate capture filter
+	if ctx.IsSet("extcap-capture-filter") {
+		os.Exit(0)
+	}
+
 	return cli.ShowAppHelp(ctx)
 }
 
 func openPipe(name string) (io.WriteCloser, error) {
 	pipe, err := os.OpenFile(name, os.O_WRONLY, os.ModeNamedPipe)
 	if err != nil {
-		return nil, fmt.Errorf("Undable to open pipe: %w", err)
+		return nil, fmt.Errorf("unable to open pipe: %w", err)
 	}
 
 	return pipe, nil

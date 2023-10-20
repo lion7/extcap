@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-//
 type VersionInfo struct {
 	Info string
 	Help string

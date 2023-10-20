@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Config represents config option which will be shown in Wireshark GUI
+// ConfigOption represents config options which will be shown in Wireshark GUI
 // Output examples
 // arg {number=0}{call=--delay}{display=Time delay}{tooltip=Time delay between packages}{type=integer}{range=1,15}{required=true}
 // arg {number=1}{call=--message}{display=Message}{tooltip=Package message content}{placeholder=Please enter a message here ...}{type=string}
@@ -15,12 +15,11 @@ import (
 // arg {number=4}{call=--server}{display=IP address for log server}{type=string}{validation=\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b}
 // value {arg=3}{value=if1}{display=Remote1}{default=true}
 // value {arg=3}{value=if2}{display=Remote2}{default=false}
-
-// ConfigOption
 type ConfigOption interface {
 	call() string
 	display() string
 	tooltip() string
+	isRequired() bool
 	setNumber(int)
 }
 
@@ -43,25 +42,28 @@ func (c *cfg) display() string {
 func (c *cfg) tooltip() string {
 	return c.tooltipVal
 }
+func (c *cfg) isRequired() bool {
+	return c.required
+}
 
 func (c *cfg) string(optType string, params [][2]string) string {
 	w := new(strings.Builder)
-	fmt.Fprintf(w, "arg {number=%d}{call=--%s}{display=%s}{type=%s}", c.number, c.callValue, c.displayVal, optType)
+	_, _ = fmt.Fprintf(w, "arg {number=%d}{call=--%s}{display=%s}{type=%s}", c.number, c.callValue, c.displayVal, optType)
 
 	if c.tooltipVal != "" {
-		fmt.Fprintf(w, "{tooltip=%s}", c.tooltipVal)
+		_, _ = fmt.Fprintf(w, "{tooltip=%s}", c.tooltipVal)
 	}
 
 	if c.required {
-		fmt.Fprintf(w, "{required=true}")
+		_, _ = fmt.Fprintf(w, "{required=true}")
 	}
 
 	if c.group != "" {
-		fmt.Fprintf(w, "{group=%s", c.group)
+		_, _ = fmt.Fprintf(w, "{group=%s", c.group)
 	}
 
 	for i := range params {
-		fmt.Fprintf(w, "{%s=%s}", params[i][0], params[i][1])
+		_, _ = fmt.Fprintf(w, "{%s=%s}", params[i][0], params[i][1])
 	}
 
 	return w.String()
@@ -71,7 +73,7 @@ func (c *cfg) setNumber(i int) {
 	c.number = i
 }
 
-// Integer option
+// ConfigIntegerOpt Integer option
 type ConfigIntegerOpt struct {
 	cfg
 	min          int
@@ -82,7 +84,7 @@ type ConfigIntegerOpt struct {
 	defaultSet bool
 }
 
-// Create new integer option
+// NewConfigIntegerOpt Create new integer option
 func NewConfigIntegerOpt(call, display string) *ConfigIntegerOpt {
 	opt := &ConfigIntegerOpt{}
 	opt.callValue = call
@@ -91,7 +93,7 @@ func NewConfigIntegerOpt(call, display string) *ConfigIntegerOpt {
 	return opt
 }
 
-// WithRange sets min and max value for option
+// Range sets min and max value for option
 func (c *ConfigIntegerOpt) Range(min, max int) *ConfigIntegerOpt {
 	if min >= max {
 		panic("in range max value should be greater min value")
@@ -105,44 +107,50 @@ func (c *ConfigIntegerOpt) Range(min, max int) *ConfigIntegerOpt {
 	return c
 }
 
-// WithDefault sets default value for INTEGER option
+// Default sets default value for INTEGER option
 func (c *ConfigIntegerOpt) Default(val int) *ConfigIntegerOpt {
 	c.defaultValue = val
 	c.defaultSet = true
 	return c
 }
 
-// WithRequired sets option required
+// Required sets option required
 func (c *ConfigIntegerOpt) Required(val bool) *ConfigIntegerOpt {
 	c.required = val
 	return c
 }
 
-// WithGroup sets option's group
+// Group sets option's group
 func (c *ConfigIntegerOpt) Group(group string) *ConfigIntegerOpt {
 	c.group = group
 	return c
 }
 
-// SetTooltip sets option tooltip
+// Tooltip sets option tooltip
 func (c *ConfigIntegerOpt) Tooltip(tooltip string) *ConfigIntegerOpt {
 	c.tooltipVal = tooltip
 	return c
 }
 
-// String implement stringer interface
+// String implements stringer interface
 // Example output
-//    arg {number=0}{call=--delay}{display=Time delay}{tooltip=Time delay between packages}{type=integer}{range=1,15}{required=true}
+//
+//	arg {number=0}{call=--delay}{display=Time delay}{tooltip=Time delay between packages}{type=integer}{range=1,15}{required=true}
 func (c *ConfigIntegerOpt) String() string {
-	params := [][2]string{}
+	var params [][2]string
+
 	if c.rangeSet {
 		params = append(params, [2]string{"range", fmt.Sprintf("%d,%d", c.min, c.max)})
+	}
+
+	if c.defaultSet {
+		params = append(params, [2]string{"default", fmt.Sprintf("%d", c.defaultValue)})
 	}
 
 	return c.string("integer", params)
 }
 
-// ConfigStringOpt impplement ConfigOption interface
+// ConfigStringOpt implements ConfigOption interface
 type ConfigStringOpt struct {
 	cfg
 	placeholder  string
@@ -152,7 +160,7 @@ type ConfigStringOpt struct {
 	defaultSet   bool
 }
 
-// Create new STRING option
+// NewConfigStringOpt Create new STRING option
 func NewConfigStringOpt(call, display string) *ConfigStringOpt {
 	opt := &ConfigStringOpt{}
 	opt.callValue = call
@@ -168,7 +176,7 @@ func (c *ConfigStringOpt) Default(val string) *ConfigStringOpt {
 	return c
 }
 
-// SetTooltip sets option tooltip
+// Placeholder sets option tooltip
 func (c *ConfigStringOpt) Placeholder(str string) *ConfigStringOpt {
 	c.placeholder = str
 	return c
@@ -186,7 +194,7 @@ func (c *ConfigStringOpt) Validation(str string) *ConfigStringOpt {
 	return c
 }
 
-// SetTooltip sets option tooltip
+// Tooltip sets option tooltip
 func (c *ConfigStringOpt) Tooltip(tooltip string) *ConfigStringOpt {
 	c.tooltipVal = tooltip
 	return c
@@ -195,7 +203,7 @@ func (c *ConfigStringOpt) Tooltip(tooltip string) *ConfigStringOpt {
 // String implements string interface
 // arg {number=0}{call=--server}{display=IP address for log server}{type=string}{validation=\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b}
 func (c *ConfigStringOpt) String() string {
-	params := [][2]string{}
+	var params [][2]string
 
 	if c.placeholder != "" {
 		params = append(params, [2]string{"placeholder", c.placeholder})
@@ -205,10 +213,14 @@ func (c *ConfigStringOpt) String() string {
 		params = append(params, [2]string{"validation", c.validation.String()})
 	}
 
+	if c.defaultSet {
+		params = append(params, [2]string{"default", fmt.Sprintf("%s", c.defaultValue)})
+	}
+
 	return c.string("string", params)
 }
 
-// ConfigBoolOpt impplement ConfigOption interface
+// ConfigBoolOpt implements ConfigOption interface
 type ConfigBoolOpt struct {
 	cfg
 	validation   *regexp.Regexp
@@ -217,7 +229,7 @@ type ConfigBoolOpt struct {
 	defaultSet   bool
 }
 
-// Create new BOOL option
+// NewConfigBoolOpt Create new BOOL option
 func NewConfigBoolOpt(call, display string) *ConfigBoolOpt {
 	opt := &ConfigBoolOpt{}
 	opt.callValue = call
@@ -233,7 +245,7 @@ func (c *ConfigBoolOpt) Default(val bool) *ConfigBoolOpt {
 	return c
 }
 
-// SetTooltip sets option tooltip
+// Tooltip sets option tooltip
 func (c *ConfigBoolOpt) Tooltip(tooltip string) *ConfigBoolOpt {
 	c.tooltipVal = tooltip
 	return c
@@ -248,7 +260,7 @@ func (c *ConfigBoolOpt) Required(val bool) *ConfigBoolOpt {
 // String implements string interface
 // arg {number=2}{call=--verify}{display=Verify}{tooltip=Verify package content}{type=boolflag}
 func (c *ConfigBoolOpt) String() string {
-	params := [][2]string{}
+	var params [][2]string
 
 	if c.defaultSet {
 		params = append(params, [2]string{"default", fmt.Sprintf("%t", c.defaultValue)})

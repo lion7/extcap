@@ -3,11 +3,11 @@ Package extcap implements library to help create cli app for capture by Wireshar
 For flags parsing, package urfave/cli is used (https://github.com/urfave/cli)
 
 For minimal application should be implemented following functions:
+
 	GetInterfaces:
 	GetDLT:
 	StartCapture:
 
-Full working example can be found in examples folder
-
+Full working example for Talos Linux can be found at https://github.com/lion7/talosdump
 */
 package extcap

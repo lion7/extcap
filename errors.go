@@ -3,9 +3,10 @@ package extcap
 import "errors"
 
 var (
-	// ErrNoInterfaceSpecified is returned when start capture or query configuration options or query supported DLTs
-	ErrNoInterfaceSpecified = errors.New("No interface specified")
+	// ErrNoInterfaceSpecified is returned when start capture is called without specifying an interface
+	// also returned when querying configuration options or supported DLTs without specifying an interface
+	ErrNoInterfaceSpecified = errors.New("no interface specified")
 
-	// ErrNoPipeProvided is returned when start capture and not provide pipe name to write
-	ErrNoPipeProvided = errors.New("No FIFO pipe provided")
+	// ErrNoPipeProvided is returned when start capture is called without providing the FIFO pipe to write to
+	ErrNoPipeProvided = errors.New("no FIFO pipe provided")
 )
