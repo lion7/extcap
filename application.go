@@ -48,6 +48,9 @@ type App struct {
 	// GetAllConfigOptions returns all possible configuration options. Optional (interfaces do not have any configuration options).
 	GetAllConfigOptions func() []ConfigOption
 
+	// VerifyCaptureFilter verifies if the provided filter is valid. Optional.
+	VerifyCaptureFilter func(filter string) error
+
 	// StartCapture starts capture process. Should be implemented. Opts are the configuration options for capture on given interface.
 	StartCapture func(iface string, fifo io.WriteCloser, filter string, opts map[string]interface{}) error
 
@@ -267,7 +270,14 @@ func (extapp App) mainAction(ctx *cli.Context) error {
 
 	// Validate capture filter
 	if ctx.IsSet("extcap-capture-filter") {
-		os.Exit(0)
+		if extapp.VerifyCaptureFilter != nil {
+			filter := ctx.String("extcap-capture-filter")
+			err := extapp.VerifyCaptureFilter(filter)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		return nil
 	}
 
 	return cli.ShowAppHelp(ctx)
