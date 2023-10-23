@@ -147,7 +147,6 @@ func (extapp App) Run(arguments []string) {
 					Value:    opt.(*ConfigBoolOpt).defaultValue,
 				})
 			case *ConfigIntegerOpt:
-				fmt.Println(opt.(*ConfigIntegerOpt).defaultSet)
 				app.Flags = append(app.Flags, &cli.IntFlag{
 					Name:     opt.call(),
 					Usage:    opt.display(),
